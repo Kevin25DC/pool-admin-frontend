@@ -16,6 +16,12 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
     'Content-Type': 'application/json',
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  // IP real del navegador para el límite de intentos de login y la auditoría (el API solo la cree con el secreto).
+  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || req.headers.get('x-real-ip') || '';
+  if (process.env.PROXY_SECRET && ip) {
+    headers['X-Client-IP'] = ip;
+    headers['X-TendiCloud-Proxy'] = process.env.PROXY_SECRET;
+  }
 
   const body = req.method !== 'GET' && req.method !== 'HEAD' ? await req.text() : undefined;
 
