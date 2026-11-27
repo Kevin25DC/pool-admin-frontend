@@ -2,11 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { cx } from '@/lib/utils';
 
 const NAV = [
   { href: '/',          icon: 'bi-grid-1x2',    label: 'Dashboard' },
   { href: '/tenants',   icon: 'bi-shop',         label: 'Tiendas' },
+  { href: '/solicitudes', icon: 'bi-inbox',       label: 'Solicitudes demo' },
   { href: '/planes',    icon: 'bi-layers',       label: 'Planes' },
   { href: '/auditoria', icon: 'bi-journal-text', label: 'Auditoría' },
 ];
@@ -14,6 +17,7 @@ const NAV = [
 const PAGE_TITLES: Record<string, string> = {
   '/':          'Dashboard',
   '/tenants':   'Tiendas',
+  '/solicitudes': 'Solicitudes de demo',
   '/planes':    'Planes',
   '/auditoria': 'Auditoría',
 };
@@ -29,6 +33,13 @@ function getPageTitle(pathname: string) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
+  // Contador de solicitudes por decidir (se refresca cada minuto).
+  const { data: demo } = useQuery({
+    queryKey: ['demo-stats'],
+    queryFn: () => api.get<{ pending: number; contacted: number }>('/demo-requests/stats'),
+    refetchInterval: 60_000,
+  });
+  const pendingDemos = (demo?.pending ?? 0) + (demo?.contacted ?? 0);
 
   async function logout() {
     await fetch('/api/admin/auth/logout', { method: 'POST' });
@@ -62,6 +73,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link key={item.href} href={item.href} className={cx('sb-link', active && 'active')}>
                 <i className={`bi ${item.icon}`} />
                 <span>{item.label}</span>
+                {item.href === '/solicitudes' && pendingDemos > 0 && (
+                  <span className="badge badge-warning" style={{ marginLeft: 'auto' }}>{pendingDemos}</span>
+                )}
               </Link>
             );
           })}
